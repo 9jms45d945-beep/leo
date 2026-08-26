@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
 
       - name: Installa dipendenze
-        run: pip install fast-flights requests
+        run: pip install fast-flights requests typing_extensions
 
       - name: Cerca voli
         env:
