@@ -40,7 +40,7 @@ DESTINAZIONE = "NYC"
 ANDATE = ["2026-12-27", "2026-12-28"]
 RITORNI = ["2027-01-04", "2027-01-05"]
 
-SOGLIA_EUR = 1500     # <-- VALORE DI TEST: dopo la prova rimetti 700
+SOGLIA_EUR = 750     # <-- VALORE DI TEST: dopo la prova rimetti 700
 ADULTI = 1
 SOLO_DIRETTI = True   # metti False per accettare anche voli con scalo
 
