@@ -14,19 +14,17 @@ from datetime import datetime, timezone
 from itertools import product
 
 try:
-    from fast_flights import FlightData, Passengers, get_flights
+    from fast_flights import FlightQuery, Passengers, create_query, get_flights
 except Exception as _err:
     import traceback
     traceback.print_exc()
     print("\n--- diagnostica ---")
     try:
         import fast_flights
-        print("Modulo trovato in:", getattr(fast_flights, "__file__", "?"))
-        print("Versione:", getattr(fast_flights, "__version__", "sconosciuta"))
         print("Nomi disponibili:",
               [n for n in dir(fast_flights) if not n.startswith("_")])
     except Exception as _e2:
-        print("Il modulo fast_flights non e' proprio importabile:", repr(_e2))
+        print("Modulo non importabile:", repr(_e2))
     sys.exit(f"\nImport fallito: {_err!r}")
 
 import requests
@@ -118,32 +116,51 @@ def notifica(testo):
 # RICERCA
 # ----------------------------------------------------------------------
 
+def _attr(oggetto, *nomi, default="?"):
+    """Prende il primo attributo esistente fra quelli elencati."""
+    for n in nomi:
+        v = getattr(oggetto, n, None)
+        if v not in (None, ""):
+            return v
+    return default
+
+
 def cerca(andata, ritorno):
     """Restituisce la lista di offerte (dict) per una coppia di date."""
-    risultato = get_flights(
-        flight_data=[
-            FlightData(date=andata, from_airport=ORIGINE, to_airport=DESTINAZIONE),
-            FlightData(date=ritorno, from_airport=DESTINAZIONE, to_airport=ORIGINE),
-        ],
+    tratte = [
+        FlightQuery(date=andata, from_airport=ORIGINE, to_airport=DESTINAZIONE),
+        FlightQuery(date=ritorno, from_airport=DESTINAZIONE, to_airport=ORIGINE),
+    ]
+    base = dict(
+        flights=tratte,
         trip="round-trip",
         seat="economy",
-        passengers=Passengers(adults=ADULTI, children=0,
-                              infants_in_seat=0, infants_on_lap=0),
-        fetch_mode="fallback",
+        passengers=Passengers(adults=ADULTI),
     )
 
+    # currency/language non esistono in tutte le versioni: se falliscono, riprovo senza
+    try:
+        query = create_query(**base, currency="EUR", language="it-IT")
+    except TypeError:
+        query = create_query(**base)
+
+    risultato = get_flights(query)
+
+    # a seconda della versione il risultato e' una lista o ha .flights
+    voli = getattr(risultato, "flights", None)
+    if voli is None:
+        voli = list(risultato)
+
     offerte = []
-    for volo in (getattr(risultato, "flights", None) or []):
-        prezzo = parse_prezzo(getattr(volo, "price", None))
+    for volo in voli:
+        prezzo = parse_prezzo(_attr(volo, "price", default=None))
         if prezzo is None:
             continue
         offerte.append({
             "prezzo": prezzo,
-            "compagnia": getattr(volo, "name", "?"),
-            "durata": getattr(volo, "duration", "?"),
-            "scali": getattr(volo, "stops", "?"),
-            "partenza": getattr(volo, "departure", "?"),
-            "arrivo": getattr(volo, "arrival", "?"),
+            "compagnia": _attr(volo, "airlines", "airline", "name"),
+            "durata": _attr(volo, "duration"),
+            "scali": _attr(volo, "stops", default="?"),
         })
     return sorted(offerte, key=lambda o: o["prezzo"])
 
