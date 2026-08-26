@@ -15,8 +15,19 @@ from itertools import product
 
 try:
     from fast_flights import FlightData, Passengers, get_flights
-except ImportError:
-    sys.exit("Manca la libreria. Esegui:  pip install fast-flights requests")
+except Exception as _err:
+    import traceback
+    traceback.print_exc()
+    print("\n--- diagnostica ---")
+    try:
+        import fast_flights
+        print("Modulo trovato in:", getattr(fast_flights, "__file__", "?"))
+        print("Versione:", getattr(fast_flights, "__version__", "sconosciuta"))
+        print("Nomi disponibili:",
+              [n for n in dir(fast_flights) if not n.startswith("_")])
+    except Exception as _e2:
+        print("Il modulo fast_flights non e' proprio importabile:", repr(_e2))
+    sys.exit(f"\nImport fallito: {_err!r}")
 
 import requests
 
