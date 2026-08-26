@@ -40,8 +40,9 @@ DESTINAZIONE = "NYC"
 ANDATE = ["2026-12-27", "2026-12-28"]
 RITORNI = ["2027-01-04", "2027-01-05"]
 
-SOGLIA_EUR = 600
+SOGLIA_EUR = 1500     # <-- VALORE DI TEST: dopo la prova rimetti 700
 ADULTI = 1
+SOLO_DIRETTI = True   # metti False per accettare anche voli con scalo
 
 # Per non ricevere 10 volte lo stesso avviso: rinotifica solo se il prezzo
 # scende di almeno questo importo rispetto all'ultimo avviso mandato.
@@ -127,10 +128,21 @@ def _attr(oggetto, *nomi, default="?"):
 
 def cerca(andata, ritorno):
     """Restituisce la lista di offerte (dict) per una coppia di date."""
-    tratte = [
-        FlightQuery(date=andata, from_airport=ORIGINE, to_airport=DESTINAZIONE),
-        FlightQuery(date=ritorno, from_airport=DESTINAZIONE, to_airport=ORIGINE),
-    ]
+    extra = {"max_stops": 0} if SOLO_DIRETTI else {}
+    try:
+        tratte = [
+            FlightQuery(date=andata, from_airport=ORIGINE,
+                        to_airport=DESTINAZIONE, **extra),
+            FlightQuery(date=ritorno, from_airport=DESTINAZIONE,
+                        to_airport=ORIGINE, **extra),
+        ]
+    except TypeError:
+        # versione della libreria senza filtro sugli scali
+        print("  [attenzione: max_stops non supportato, includo anche gli scali]")
+        tratte = [
+            FlightQuery(date=andata, from_airport=ORIGINE, to_airport=DESTINAZIONE),
+            FlightQuery(date=ritorno, from_airport=DESTINAZIONE, to_airport=ORIGINE),
+        ]
     base = dict(
         flights=tratte,
         trip="round-trip",
@@ -160,7 +172,7 @@ def cerca(andata, ritorno):
             "prezzo": prezzo,
             "compagnia": _attr(volo, "airlines", "airline", "name"),
             "durata": _attr(volo, "duration"),
-            "scali": _attr(volo, "stops", default="?"),
+            "scali": "diretto" if SOLO_DIRETTI else _attr(volo, "stops", "num_stops"),
         })
     return sorted(offerte, key=lambda o: o["prezzo"])
 
@@ -186,7 +198,7 @@ def main():
 
         migliore = offerte[0]
         print(f"{chiave}: miglior prezzo {migliore['prezzo']:.0f} € "
-              f"({migliore['compagnia']}, {migliore['scali']} scali)")
+              f"({migliore['compagnia']}, {migliore['scali']})")
 
         # aggiorna sempre lo storico prezzi
         stato.setdefault(chiave, {})["ultimo_visto"] = migliore["prezzo"]
@@ -206,7 +218,7 @@ def main():
             f"✈️ <b>{migliore['prezzo']:.0f} €</b> — Roma → New York A/R",
             f"📅 {datetime.strptime(andata, '%Y-%m-%d').strftime('%d/%m')} → "
             f"{datetime.strptime(ritorno, '%Y-%m-%d').strftime('%d/%m')}",
-            f"🛫 {migliore['compagnia']} · {migliore['scali']} scali · {migliore['durata']}",
+            f"🛫 {migliore['compagnia']} · {migliore['scali']} · {migliore['durata']}",
             "",
             f'<a href="{link_skyscanner(andata, ritorno)}">Apri su Skyscanner</a>',
         ]
