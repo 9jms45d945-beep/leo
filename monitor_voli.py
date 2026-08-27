@@ -40,9 +40,15 @@ DESTINAZIONE = "NYC"
 ANDATE = ["2026-12-27", "2026-12-28"]
 RITORNI = ["2027-01-04", "2027-01-05"]
 
-SOGLIA_EUR = 750     # <-- VALORE DI TEST: dopo la prova rimetti 700
+SOGLIA_EUR = 750
 ADULTI = 1
-SOLO_DIRETTI = True   # metti False per accettare anche voli con scalo
+
+# 0 = solo diretti, 1 = ammette un solo scalo
+MAX_SCALI = 1
+
+# Scarta i viaggi troppo lunghi. Roma-New York diretto e' circa 9 ore, quindi
+# 15 ore lascia passare i diretti e gli scali brevi (2-4 h), non quelli lunghi.
+DURATA_MAX_ORE = 15
 
 # Per non ricevere 10 volte lo stesso avviso: rinotifica solo se il prezzo
 # scende di almeno questo importo rispetto all'ultimo avviso mandato.
@@ -71,6 +77,16 @@ def parse_prezzo(raw):
         return float(interi + "." + n[-2:])
     solo_cifre = re.sub(r"\D", "", n)
     return float(solo_cifre) if solo_cifre else None
+
+
+def parse_durata(raw):
+    """Converte '11 hr 30 min', '11 ore 30 min', '11h30' in minuti. None se fallisce."""
+    s = str(raw or "").lower()
+    ore = re.search(r"(\d+)\s*(?:hr|hour|hours|ore|ora|h)\b", s)
+    minuti = re.search(r"(\d+)\s*(?:min|minute|minutes|m)\b", s)
+    if not ore and not minuti:
+        return None
+    return (int(ore.group(1)) * 60 if ore else 0) + (int(minuti.group(1)) if minuti else 0)
 
 
 def link_skyscanner(andata, ritorno):
@@ -128,7 +144,7 @@ def _attr(oggetto, *nomi, default="?"):
 
 def cerca(andata, ritorno):
     """Restituisce la lista di offerte (dict) per una coppia di date."""
-    extra = {"max_stops": 0} if SOLO_DIRETTI else {}
+    extra = {"max_stops": MAX_SCALI}
     try:
         tratte = [
             FlightQuery(date=andata, from_airport=ORIGINE,
@@ -138,7 +154,7 @@ def cerca(andata, ritorno):
         ]
     except TypeError:
         # versione della libreria senza filtro sugli scali
-        print("  [attenzione: max_stops non supportato, includo anche gli scali]")
+        print("  [attenzione: max_stops non supportato, includo tutti gli scali]")
         tratte = [
             FlightQuery(date=andata, from_airport=ORIGINE, to_airport=DESTINAZIONE),
             FlightQuery(date=ritorno, from_airport=DESTINAZIONE, to_airport=ORIGINE),
@@ -164,16 +180,28 @@ def cerca(andata, ritorno):
         voli = list(risultato)
 
     offerte = []
+    scartati_lunghi = 0
     for volo in voli:
         prezzo = parse_prezzo(_attr(volo, "price", default=None))
         if prezzo is None:
             continue
+
+        durata_raw = _attr(volo, "duration")
+        minuti = parse_durata(durata_raw)
+        # se la durata non e' leggibile tengo l'offerta invece di scartarla al buio
+        if minuti is not None and minuti > DURATA_MAX_ORE * 60:
+            scartati_lunghi += 1
+            continue
+
         offerte.append({
             "prezzo": prezzo,
             "compagnia": _attr(volo, "airlines", "airline", "name"),
-            "durata": _attr(volo, "duration"),
-            "scali": "diretto" if SOLO_DIRETTI else _attr(volo, "stops", "num_stops"),
+            "durata": durata_raw,
+            "scali": "diretto" if MAX_SCALI == 0 else _attr(volo, "stops", "num_stops"),
         })
+
+    if scartati_lunghi:
+        print(f"  ({scartati_lunghi} opzioni scartate perche' oltre {DURATA_MAX_ORE} h)")
     return sorted(offerte, key=lambda o: o["prezzo"])
 
 
