@@ -1,21 +1,22 @@
 {
   "2026-12-27_2027-01-04": {
-    "ultimo_visto": 716.0,
-    "aggiornato": "2026-08-26 21:45 UTC"
+    "ultimo_visto": 720.0,
+    "aggiornato": "2026-08-27 10:21 UTC",
+    "ultimo_avviso": 720.0
   },
   "2026-12-27_2027-01-05": {
-    "ultimo_visto": 1362.0,
-    "aggiornato": "2026-08-26 21:54 UTC",
-    "ultimo_avviso": 1362.0
+    "ultimo_visto": 685.0,
+    "aggiornato": "2026-08-27 10:21 UTC",
+    "ultimo_avviso": 685.0
   },
   "2026-12-28_2027-01-04": {
-    "ultimo_visto": 1057.0,
-    "aggiornato": "2026-08-26 21:55 UTC",
-    "ultimo_avviso": 1057.0
+    "ultimo_visto": 709.0,
+    "aggiornato": "2026-08-27 10:21 UTC",
+    "ultimo_avviso": 709.0
   },
   "2026-12-28_2027-01-05": {
-    "ultimo_visto": 1042.0,
-    "aggiornato": "2026-08-26 21:54 UTC",
-    "ultimo_avviso": 1042.0
+    "ultimo_visto": 642.0,
+    "aggiornato": "2026-08-27 10:21 UTC",
+    "ultimo_avviso": 642.0
   }
 }
